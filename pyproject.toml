@@ -11,4 +11,6 @@ dependencies = [
     "plotly>=6.2.0",
     "pyyaml>=6.0.2",
     "requests>=2.32.4",
+    "streamlit>=1.47.1",
+    "streamlit-autorefresh>=1.0.1",
 ]
