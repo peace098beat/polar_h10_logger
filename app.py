@@ -41,6 +41,12 @@ st.session_state.loaded_files.extend(new_files)
 # データフレーム取得
 df = st.session_state.df
 
+# 現在時刻を表示
+st.markdown(
+    f"<p style='text-align:right; font-size:16px;'>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>",
+    unsafe_allow_html=True
+)
+
 # 最新のHRを大きく表示
 if not df.empty:
     latest_hr = df["heart_rate"].iloc[-1]
@@ -48,6 +54,7 @@ if not df.empty:
         f"<h1 style='text-align:center; font-size:72px;'>{latest_hr:.1f} bpm</h1>",
         unsafe_allow_html=True
     )
+
 
 # 描画
 fig = create_resampled_figure(df)
