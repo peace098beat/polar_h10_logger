@@ -3,16 +3,6 @@ import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-
-def get_device_list(token: str):
-    """Utility function to get the list of devices"""
-    url = "https://api.switch-bot.com/v1.0/devices"
-    headers = {"Authorization": token}
-    response = requests.get(url, headers=headers, verify=False)
-    response.raise_for_status()
-    return response.json()
-
-
 def set_led_color(device_id: str, token: str, rgb: tuple[int, int, int]):
     url = f"https://api.switch-bot.com/v1.0/devices/{device_id}/commands"
     headers = {"Authorization": token, "Content-Type": "application/json; charset=utf8"}
@@ -63,15 +53,3 @@ def set_led(device_id: str, token: str, level: float):
         b = int(255 * (1 - ratio))
 
     return set_led_color(device_id, token, (r, g, b))
-
-
-if __name__ == "__main__":
-    TOKEN = "f26eaa7007230625ffc25ce78cae8444b62036f9bdd9fb43caa31ae873af6021f3cc0a81a16dac9c13247cc03f686915"
-    DEVICE_ID = "6055F92A78EE"
-
-    # 例: 紫（中間色）
-    # print(set_led_blue_to_red(DEVICE_ID, TOKEN, level=0.0))
-
-    # set_led_color(DEVICE_ID, TOKEN, (255, 255, 255)) # 白
-    set_led_color(DEVICE_ID, TOKEN, (1, 1, 1))  # 黒
-    turn_off(DEVICE_ID, TOKEN)
