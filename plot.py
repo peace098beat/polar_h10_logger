@@ -161,6 +161,7 @@ def plot_spectrogram(
     """
     Spectrogram heatmap from STFT.
     """
+    # [TODO] Shiftを追加する.
     def stft(series, window):
         spectra = []
         times = []
