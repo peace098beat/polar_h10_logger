@@ -40,5 +40,8 @@ class AsyncDataSaver:
             rr = data["rr"]
             ts = data["ts"]
 
+        tmp_timestamp = ts[-1]
+        t = datetime.fromtimestamp(tmp_timestamp)
+
         np.savez_compressed(path, hr=hr, rr=rr, ts=ts)
-        print(f"[DataSaver] Saved to: {path}")
+        print(f"[DataSaver] Saved to: {path}, data['ts'][0]: {tmp_timestamp}, {t}")

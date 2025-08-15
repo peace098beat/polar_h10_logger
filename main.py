@@ -12,9 +12,7 @@ RR_UUID = "00002a37-0000-1000-8000-00805f9b34fb"
 with open("config.yml", "r") as f:
     cfg = yaml.safe_load(f)
 
-DEVICE_ADDRESS = cfg["DEVICE_ADDRESS"]
-TOKEN = cfg["TOKEN"]
-DEVICE_ID = cfg["DEVICE_ID"]
+POLAR_BT_ADDRESS = cfg["POLAR_BT_ADDRESS"]
 
 data_saver = AsyncDataSaver()
 
@@ -42,7 +40,11 @@ def handle_rr_data(_, data):
         i += 2
 
     # -- save --
-    ts = datetime.now().timestamp()
+    time_now = datetime.now()
+    
+    ts = time_now.timestamp()
+    print(f"[INFO][handle_rr_data] Time: {ts},{time_now}")
+
     asyncio.create_task(data_saver.queue.put({
         "hr": np.array([hr]),
         "rr": np.array(rr_list),
@@ -54,7 +56,7 @@ async def run_once(t_interval=60, timeout_sec=10):
     print(f"[INFO] データ取得開始: {t_interval}秒")
 
     try:
-        async with BleakClient(DEVICE_ADDRESS) as client:
+        async with BleakClient(POLAR_BT_ADDRESS) as client:
             await asyncio.wait_for(client.connect(), timeout=timeout_sec)
             _ = client.services
             await asyncio.wait_for(

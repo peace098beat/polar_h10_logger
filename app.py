@@ -31,11 +31,16 @@ def load_data(hours: int = 3) -> tuple[pd.Series, pd.Series]:
         if mtime < cutoff:
             continue
         with np.load(fp) as data:
-            times = pd.to_datetime(data['ts'], unit='s')
+            times = [datetime.fromtimestamp(ts) for ts in data['ts']]
+
+            # 1. HR
             buf_hr.append(pd.Series(data['hr'], index=times, name='heart_rate'))
+
+            # 2. RR
             rr_vals = data['rr']
             time_rr = pd.date_range(start=times[0], end=times[-1], periods=len(rr_vals))
             buf_rr.append(pd.Series(rr_vals, index=time_rr, name='rr'))
+
     # Concatenate series
     if buf_hr:
         sr_hr = pd.concat(buf_hr)
@@ -53,6 +58,7 @@ def preprocess_hr(sr_hr: pd.Series) -> pd.DataFrame:
         'hr_sd_30s': sr_hr.rolling('30s', center=True).std().values,
         'hr_sd_5min': sr_hr.rolling('5min', center=True).std().values,
         'hr_sd_15min': sr_hr.rolling('15min', center=True).std().values,
+        'hr_mean_5min': sr_hr.rolling('5min', center=True).mean().values,  # Add rolling mean for 5 minutes
     }, index=sr_hr.index)
 
 # Preprocessing: apply median filter and compute rr_diff and RMSSD
@@ -63,6 +69,9 @@ def preprocess_rr(sr_rr: pd.Series) -> pd.DataFrame:
     mask = (sr_rr >= rr_med - 200) & (sr_rr <= rr_med + 200)
     # mask部分は, np.nan
     sr = sr_rr.where(mask)
+
+    def rms(x):
+        return np.sqrt(np.mean(x**2))
 
     sdnn_30s = sr.rolling('30s', center=True).std()
     sdnn_5min = sr.rolling('5min', center=True).std()
@@ -101,7 +110,7 @@ df_rr = preprocess_rr(sr_rr)
 df_hr = preprocess_hr(sr_hr)
 
 # --- Main view with tabs ---
-tab1, tab2, tab3 = st.tabs(["Heart Rate", "RR Intervals", "RR Diff Analysis"])
+tab1, tab2, tab3, tab4 = st.tabs(["Heart Rate", "RR Intervals", "RR Diff Analysis", "Data View"])
 
 with tab1:
     st.header("Heart Rate Time Series")
@@ -146,3 +155,15 @@ with tab3:
 
     st.plotly_chart(plot_stft(df_rr["rr_diff"], window="5min"))
     st.plotly_chart(plot_spectrogram(df_rr["rr_diff"], window="5min"), title="RR Difference Spectrogram")
+
+with tab4:
+    st.header("Data View")
+
+    st.subheader("df_rr Data (TSV Format)")
+    st.text_area("df_rr (TSV)", df_rr.to_csv(index=True, sep='\t'), height=300)
+
+    st.subheader("df_hr Data (TSV Format)")
+    st.text_area("df_hr (TSV)", df_hr.to_csv(index=True, sep='\t'), height=300)
+
+    st.subheader("df_hr 5-min Rolling Mean (TSV Format)")
+    st.text_area("df_hr Rolling Mean (TSV)", df_hr.resample("5min").mean().to_csv(index=True, sep='\t'), height=300)
