@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from plot import plot_timeseries, plot_histogram, plot_spectrogram, plot_stft
+import os
+import json
 
 st.set_page_config(layout="wide", page_title="Heart Rate Monitor")
 
@@ -167,3 +169,105 @@ with tab4:
 
     st.subheader("df_hr 5-min Rolling Mean (TSV Format)")
     st.text_area("df_hr Rolling Mean (TSV)", df_hr.resample("5min").mean().to_csv(index=True, sep='\t'), height=300)
+
+# --- Annotation Section ---
+annotations = []  # List to store annotations
+predefined_tags = ["Exercise", "Resting", "Working", "Eating", "Sleeping"]  # Predefined tags
+
+# Path to the annotations file
+ANNOTATIONS_FILE = "data/annot/annot.json"
+
+# Ensure the directory exists
+os.makedirs(os.path.dirname(ANNOTATIONS_FILE), exist_ok=True)
+
+# Load existing annotations if the file exists
+if os.path.exists(ANNOTATIONS_FILE):
+    with open(ANNOTATIONS_FILE, "r") as f:
+        annotations = json.load(f)
+else:
+    annotations = []
+
+# Ensure annotations is global and persists
+st.session_state.setdefault("annotations", annotations)
+annotations = st.session_state["annotations"]
+
+with st.sidebar:
+    st.header("Add Annotation")
+
+    # Section to add new tags
+    new_tag = st.text_input("Add a new tag")
+    if st.button("Add Tag"):
+        if new_tag:
+            if new_tag not in predefined_tags:
+                predefined_tags.append(new_tag)
+                st.success(f"Tag '{new_tag}' added successfully!")
+            else:
+                st.warning(f"Tag '{new_tag}' already exists.")
+        else:
+            st.error("Tag cannot be empty.")
+
+    with st.form("annotation_form"):
+        annotation_date = st.date_input("Date")
+        annotation_time = st.time_input("Time")
+        annotation_posture = st.selectbox("Posture", ["Standing", "Sitting", "Lying Down"])
+        annotation_situation = st.multiselect("Situation (Tags)", options=predefined_tags, default=[])
+        submit_annotation = st.form_submit_button("Add Annotation")
+
+    if submit_annotation:
+        try:
+            annotation_datetime = datetime.combine(annotation_date, annotation_time)
+            annotations.append({
+                "Time": annotation_datetime,
+                "Posture": annotation_posture,
+                "Situation": ", ".join(annotation_situation)
+            })
+            st.success("Annotation added successfully!")
+        except Exception as e:
+            st.error(f"Error adding annotation: {e}")
+
+# Display annotations
+    st.subheader("Annotations")
+    if annotations:
+        try:
+            annotations_df = pd.DataFrame(annotations)
+
+            # Ensure the 'Time' column is in datetime format
+            annotations_df["Time"] = pd.to_datetime(annotations_df["Time"])
+
+            # Find the annotation closest to the current time
+            current_time = datetime.now()
+            annotations_df["Time_Diff"] = (annotations_df["Time"] - current_time).abs()
+            closest_annotation_idx = annotations_df["Time_Diff"].idxmin()
+            annotations_df = annotations_df.drop(columns=["Time_Diff"])
+
+            # Highlight the closest annotation
+            def highlight_closest(row):
+                return ["background-color: yellow"] * len(row) if row.name == closest_annotation_idx else [""] * len(row)
+
+            st.dataframe(annotations_df.style.apply(highlight_closest, axis=1))
+
+            # テキストエリアでJSON形式で表示
+            annotations_json = json.dumps(annotations, indent=4, default=str)
+            st.text_area("Annotations (JSON Format)", annotations_json, height=300)
+        except Exception as e:
+            st.error(f"Error displaying annotations: {e}")
+    else:
+        st.write("No annotations available.")
+
+    # Save annotations to JSON
+    if st.button("Save Annotations to JSON"):
+        try:
+            serialized_annotations = [
+                {
+                    "Time": annotation["Time"].isoformat() if isinstance(annotation["Time"], datetime) else annotation["Time"],
+                    "Posture": annotation["Posture"],
+                    "Situation": annotation["Situation"]
+                }
+                for annotation in annotations
+            ]
+
+            with open(ANNOTATIONS_FILE, "w") as f:
+                json.dump(serialized_annotations, f, indent=4)
+            st.success(f"Annotations saved to {ANNOTATIONS_FILE}")
+        except Exception as e:
+            st.error(f"Error saving annotations: {e}")
